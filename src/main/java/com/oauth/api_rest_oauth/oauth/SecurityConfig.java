@@ -34,6 +34,7 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.client.InMemoryRegisteredClientRepository;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.oauth2.server.authorization.token.JwtEncodingContext;
 import org.springframework.security.oauth2.server.authorization.token.OAuth2TokenCustomizer;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
@@ -47,6 +48,7 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -97,6 +99,10 @@ public class SecurityConfig {
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
 
+        TokenSettings tokenSettings = TokenSettings.builder()
+                .accessTokenTimeToLive(Duration.ofMinutes(1)) // Cambiando la duración a 1 minuto
+                .build();
+
         RegisteredClient oauthClient = RegisteredClient.withId(UUID.randomUUID().toString())
                 .clientId("oauth-client")
                 .clientSecret("{noop}1234567")
@@ -104,6 +110,7 @@ public class SecurityConfig {
                 .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                 .scope("read")
                 .scope("write")
+                .tokenSettings(tokenSettings)
                 .build();
 
         return new InMemoryRegisteredClientRepository(oauthClient);
@@ -166,6 +173,7 @@ public class SecurityConfig {
                 RegisteredClient registeredClient = context.getRegisteredClient();
                 if (registeredClient != null) {
                     context.getClaims().claim("scope", registeredClient.getScopes());
+                    //context.getClaims().expiresAt(5);
 
                     // Crear instancia de AccessToken y guardar en la base de datos
                     AccessToken accessToken = new AccessToken();
