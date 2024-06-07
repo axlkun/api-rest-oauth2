@@ -26,6 +26,9 @@ import org.springframework.security.config.annotation.web.configurers.oauth2.ser
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -75,6 +78,11 @@ public class SecurityConfig {
     private ClienteRepository clienteRepository;
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
+
+    @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http)
             throws Exception {
@@ -107,27 +115,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /*
-    @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-
-        TokenSettings tokenSettings = TokenSettings.builder()
-                .accessTokenTimeToLive(Duration.ofMinutes(1)) // Cambiando la duración a 1 minuto
-                .build();
-
-        RegisteredClient oauthClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("oauth-client")
-                .clientSecret("{noop}1234567")
-                .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-                .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-                .scope("read")
-                .scope("write")
-                .tokenSettings(tokenSettings)
-                .build();
-
-        return new InMemoryRegisteredClientRepository(oauthClient);
-    }*/
-
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
         return new RegisteredClientRepository() {
@@ -155,7 +142,7 @@ public class SecurityConfig {
 
                     return RegisteredClient.withId(UUID.randomUUID().toString())
                             .clientId(cliente.getClientId())
-                            .clientSecret("{noop}" + cliente.getClientSecret())
+                            .clientSecret(cliente.getClientSecret())
                             .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                             .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
                             .scope("read")
