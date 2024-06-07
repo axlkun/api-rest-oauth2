@@ -9,32 +9,23 @@ import java.time.Instant;
 public class AccessToken {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String jti;
 
-    private String sub;
     private String aud;
-    private Instant nbf;
     private Instant exp;
     private Instant iat;
     private String scope;
-    private String iss;
-    private String jti;
 
-    public Long getId() {
-        return id;
+    @ManyToOne
+    @JoinColumn(name = "clientId", nullable = false)
+    private Cliente cliente;
+
+    public String getJti() {
+        return jti;
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getSub() {
-        return sub;
-    }
-
-    public void setSub(String sub) {
-        this.sub = sub;
+    public void setJti(String jti) {
+        this.jti = jti;
     }
 
     public String getAud() {
@@ -43,14 +34,6 @@ public class AccessToken {
 
     public void setAud(String aud) {
         this.aud = aud;
-    }
-
-    public Instant getNbf() {
-        return nbf;
-    }
-
-    public void setNbf(Instant nbf) {
-        this.nbf = nbf;
     }
 
     public Instant getExp() {
@@ -77,19 +60,11 @@ public class AccessToken {
         this.scope = scope;
     }
 
-    public String getIss() {
-        return iss;
+    public Cliente getCliente() {
+        return cliente;
     }
 
-    public void setIss(String iss) {
-        this.iss = iss;
-    }
-
-    public String getJti() {
-        return jti;
-    }
-
-    public void setJti(String jti) {
-        this.jti = jti;
+    public void setCliente(Cliente cliente) {
+        this.cliente = cliente;
     }
 }

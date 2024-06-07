@@ -7,11 +7,15 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.oauth.api_rest_oauth.models.AccessToken;
+import com.oauth.api_rest_oauth.models.Cliente;
+import com.oauth.api_rest_oauth.repositories.ClienteRepository;
 import com.oauth.api_rest_oauth.services.AccessTokenService;
+import com.oauth.api_rest_oauth.services.ClienteService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -54,6 +58,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Configuration
@@ -61,7 +66,13 @@ import java.util.UUID;
 public class SecurityConfig {
 
     @Autowired
-    AccessTokenService accessTokenService;
+    private AccessTokenService accessTokenService;
+
+    @Autowired
+    private ClienteService clienteService;
+
+    @Autowired
+    private ClienteRepository clienteRepository;
 
     @Bean
     @Order(1)
@@ -96,6 +107,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /*
     @Bean
     public RegisteredClientRepository registeredClientRepository() {
 
@@ -114,6 +126,46 @@ public class SecurityConfig {
                 .build();
 
         return new InMemoryRegisteredClientRepository(oauthClient);
+    }*/
+
+    @Bean
+    public RegisteredClientRepository registeredClientRepository() {
+        return new RegisteredClientRepository() {
+
+            @Override
+            public void save(RegisteredClient registeredClient) {
+                // No-op
+            }
+
+            @Override
+            public RegisteredClient findById(String id) {
+                // No-op
+                return null;
+            }
+
+            @Override
+            public RegisteredClient findByClientId(String clientId) {
+                Optional<Cliente> optionalCliente = clienteRepository.findByClientId(clientId);
+                if (optionalCliente.isPresent()) {
+                    Cliente cliente = optionalCliente.get();
+
+                    TokenSettings tokenSettings = TokenSettings.builder()
+                            .accessTokenTimeToLive(Duration.ofMinutes(1))
+                            .build();
+
+                    return RegisteredClient.withId(UUID.randomUUID().toString())
+                            .clientId(cliente.getClientId())
+                            .clientSecret("{noop}" + cliente.getClientSecret())
+                            .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                            .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                            .scope("read")
+                            .scope("write")
+                            .tokenSettings(tokenSettings)
+                            .build();
+                }
+                return null;
+            }
+        };
     }
 
     @Bean
@@ -160,31 +212,28 @@ public class SecurityConfig {
             // Formatear las fechas
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").withZone(ZoneId.systemDefault());
 
-            String sub = (String) claims.get("sub");
             String aud = String.join(",", (List<String>) claims.get("aud"));
-            Instant nbf = (Instant) claims.get("nbf");
             Instant exp = (Instant) claims.get("exp");
             Instant iat = (Instant) claims.get("iat");
             String scope = String.join(",", context.getRegisteredClient().getScopes());
-            String iss = claims.get("iss").toString(); // Convertir a cadena de forma segura
             String jti = (String) claims.get("jti");
 
             if (context.getTokenType().getValue().equals("access_token")) {
                 RegisteredClient registeredClient = context.getRegisteredClient();
                 if (registeredClient != null) {
                     context.getClaims().claim("scope", registeredClient.getScopes());
-                    //context.getClaims().expiresAt(5);
 
                     // Crear instancia de AccessToken y guardar en la base de datos
                     AccessToken accessToken = new AccessToken();
-                    accessToken.setSub(sub);
+
+                    accessToken.setJti(jti);
                     accessToken.setAud(aud);
-                    accessToken.setNbf(nbf);
                     accessToken.setExp(exp);
                     accessToken.setIat(iat);
                     accessToken.setScope(scope);
-                    accessToken.setIss(iss);
-                    accessToken.setJti(jti);
+                    // Buscar el cliente en la base de datos y asociarlo al token
+                    Cliente cliente = clienteService.findByClientId(registeredClient.getClientId());
+                    accessToken.setCliente(cliente);
 
                     accessTokenService.saveAccessToken(accessToken);
                 }
